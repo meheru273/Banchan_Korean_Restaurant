@@ -1,0 +1,15 @@
+{
+  "name": "@feastfleet/shared",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "bullmq": "^5.1.0",
+    "cors": "^2.8.6",
+    "express": "^4.21.0",
+    "helmet": "^8.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "winston": "^3.11.0"
+  }
+}

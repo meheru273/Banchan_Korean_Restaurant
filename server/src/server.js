@@ -7,7 +7,7 @@ import routes from "./routes/routes.js"
 import { connectDB } from "./config/db.js"
 import dotenv from "dotenv"
 import rateLimiter from "./middleware/rateLimiter.js"
-
+import cors from "cors";
 dotenv.config()
 
 const PORT = process.env.PORT || 5001
@@ -26,14 +26,17 @@ app.use((req, res, next) => {
     next();
 });
 app.use(rateLimiter)
+app.use(cors({
+    origin: "https://localhost:5173",
+}));
+app.use("/api/notes", routes);
 
-app.use("/api/notes",routes);
 
-connectDB().then(()=>{
+connectDB().then(() => {
     app.listen(PORT, () => {
-    console.log(`server running at http://localhost:${PORT}`)
-    console.log(`notes endpoint: http://localhost:${PORT}/api/notes`)
-})
+        console.log(`server running at http://localhost:${PORT}`)
+        console.log(`notes endpoint: http://localhost:${PORT}/api/notes`)
+    })
 })
 
 

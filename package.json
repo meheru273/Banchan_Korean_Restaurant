@@ -1,0 +1,28 @@
+{
+  "name": "feastfleet",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "client",
+    "admin"
+  ],
+  "scripts": {
+    "dev:gateway": "npm run dev --workspace=services/gateway",
+    "dev:auth": "npm run dev --workspace=services/auth-service",
+    "dev:menu": "npm run dev --workspace=services/menu-service",
+    "dev:order": "npm run dev --workspace=services/order-service",
+    "dev:delivery": "npm run dev --workspace=services/delivery-service",
+    "dev:notification": "npm run dev --workspace=services/notification-service",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:admin": "npm run dev --workspace=admin",
+    "dev:services": "concurrently \"npm:dev:gateway\" \"npm:dev:auth\" \"npm:dev:menu\" \"npm:dev:order\" \"npm:dev:delivery\" \"npm:dev:notification\"",
+    "lint": "eslint . --ext .js,.jsx",
+    "test": "npm test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "eslint": "^8.56.0"
+  }
+}
