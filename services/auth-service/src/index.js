@@ -1,20 +1,10 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
-const cookieParser = require('cookie-parser');
-const { createApp, createLogger } = require('@feastfleet/shared');
+const { createLogger } = require('@feastfleet/shared');
 const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
+const app = require('./app');
 
 const logger = createLogger('auth-service');
-const app = createApp('auth-service');
-
-// Cookie parser (for refresh tokens)
-app.use(cookieParser());
-
-// Routes
-app.use('/api/auth', authRoutes);
-
-// Start
 const PORT = process.env.PORT || 3001;
 
 const start = async () => {

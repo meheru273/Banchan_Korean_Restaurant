@@ -1,0 +1,164 @@
+# FeastFleet — Render Blueprint (backend only; the frontend is deployed to Vercel)
+# Deploy with: Render Dashboard → New + → Blueprint → connect this repo.
+#
+# Secrets (MONGO_URI, STRIPE_*, SMTP_*) are marked `sync: false` — Render prompts
+# for them on first deploy and never stores them in git. JWT secrets are
+# auto-generated; CORS_ORIGIN is shared and set once to your Vercel URL.
+#
+# NOTE: each service uses its OWN database name in MONGO_URI:
+#   auth → feastfleet_auth, menu → feastfleet_menu,
+#   order → feastfleet_orders, delivery → feastfleet_delivery
+
+envVarGroups:
+  - name: feastfleet-shared
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      # The public Vercel URL of the frontend, e.g. https://banchan.vercel.app
+      # (no trailing slash). Set on every service so CORS headers are consistent
+      # through the gateway proxy.
+      - key: CORS_ORIGIN
+        sync: false
+
+services:
+  # ── Shared Redis (cache + BullMQ) ──
+  - type: redis
+    name: feastfleet-redis
+    region: frankfurt
+    plan: free
+    ipAllowList: []                 # only reachable from Render services
+    maxmemoryPolicy: allkeys-lru
+
+  # ── Auth service ──
+  - type: web
+    name: feastfleet-auth
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: main
+    buildCommand: npm ci
+    startCommand: node services/auth-service/src/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - fromGroup: feastfleet-shared
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+
+  # ── Menu service ──
+  - type: web
+    name: feastfleet-menu
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: main
+    buildCommand: npm ci
+    startCommand: node services/menu-service/src/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - fromGroup: feastfleet-shared
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+
+  # ── Order service (Stripe lives here) ──
+  - type: web
+    name: feastfleet-order
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: main
+    buildCommand: npm ci
+    startCommand: node services/order-service/src/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - fromGroup: feastfleet-shared
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+      - key: MENU_SERVICE_URL
+        value: https://feastfleet-menu.onrender.com
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false                 # set after creating the webhook in the Stripe Dashboard
+      - key: STRIPE_CURRENCY
+        value: gbp
+
+  # ── Delivery service ──
+  - type: web
+    name: feastfleet-delivery
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: main
+    buildCommand: npm ci
+    startCommand: node services/delivery-service/src/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - fromGroup: feastfleet-shared
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+
+  # ── API Gateway (public entrypoint for /api/* — this is the URL the Vercel app calls) ──
+  - type: web
+    name: feastfleet-gateway
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: main
+    buildCommand: npm ci
+    startCommand: node services/gateway/src/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - fromGroup: feastfleet-shared
+      - key: AUTH_SERVICE_URL
+        value: https://feastfleet-auth.onrender.com
+      - key: MENU_SERVICE_URL
+        value: https://feastfleet-menu.onrender.com
+      - key: ORDER_SERVICE_URL
+        value: https://feastfleet-order.onrender.com
+      - key: DELIVERY_SERVICE_URL
+        value: https://feastfleet-delivery.onrender.com
+
+  # ── Notification worker (no HTTP; consumes BullMQ events) ──
+  - type: worker
+    name: feastfleet-notification
+    runtime: node
+    region: frankfurt
+    plan: free
+    branch: main
+    buildCommand: npm ci
+    startCommand: node services/notification-service/src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REDIS_URL
+        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        value: Banchan <noreply@banchan.com>

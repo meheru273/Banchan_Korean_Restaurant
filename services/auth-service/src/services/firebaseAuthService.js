@@ -80,6 +80,13 @@ class FirebaseAuthService {
     const avatar = decodedToken.picture || null;
     const provider = this._getProvider(decodedToken);
 
+    // 2a. For email/password sign-ins, require a verified email. (Google/phone
+    // providers already imply a verified identity.) This blocks tokens minted
+    // for an account that hasn't clicked the verification link.
+    if (provider === 'email' && !decodedToken.email_verified) {
+      throw ApiError.forbidden('Please verify your email address before logging in.');
+    }
+
     // 3. Find existing user by firebaseUid OR email
     let user = await User.findOne({
       $or: [

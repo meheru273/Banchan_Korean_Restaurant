@@ -12,16 +12,12 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      unique: true,
-      sparse: true, // Allows multiple null values (for phone-only registrations)
       lowercase: true,
       trim: true,
       default: null,
     },
     phone: {
       type: String,
-      unique: true,
-      sparse: true, // Allows multiple null values (for email-only registrations)
       trim: true,
       default: null,
     },
@@ -43,8 +39,6 @@ const userSchema = new mongoose.Schema(
     },
     firebaseUid: {
       type: String,
-      unique: true,
-      sparse: true, // Allows null for non-Firebase users
       default: null,
     },
     avatar: {
@@ -84,6 +78,13 @@ const userSchema = new mongoose.Schema(
 
 // Indexes
 userSchema.index({ role: 1, isActive: 1 });
+
+// Unique only when the field is an actual string. Partial indexes (unlike
+// sparse) correctly skip documents whose value is null, so the many users
+// that legitimately have no email / phone / firebaseUid don't collide.
+userSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string' } } });
+userSchema.index({ phone: 1 }, { unique: true, partialFilterExpression: { phone: { $type: 'string' } } });
+userSchema.index({ firebaseUid: 1 }, { unique: true, partialFilterExpression: { firebaseUid: { $type: 'string' } } });
 
 // Ensure at least email, phone, or firebaseUid is provided
 userSchema.pre('validate', function (next) {

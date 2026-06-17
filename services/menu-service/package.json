@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "seed": "node src/seed.js"
+    "seed": "node src/seed.js",
+    "test": "jest --forceExit --detectOpenHandles --passWithNoTests"
   },
   "dependencies": {
     "@feastfleet/shared": "*",
@@ -19,6 +20,9 @@
     "morgan": "^1.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.0"
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^9.1.6",
+    "nodemon": "^3.0.0",
+    "supertest": "^6.3.3"
   }
 }

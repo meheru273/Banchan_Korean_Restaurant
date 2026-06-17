@@ -1,0 +1,17 @@
+{
+  "name": "@feastfleet/notification-service",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@feastfleet/shared": "*",
+    "dotenv": "^16.3.1",
+    "nodemailer": "^6.9.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}

@@ -1,14 +1,10 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
-const { createApp, createLogger } = require('@feastfleet/shared');
+const { createLogger } = require('@feastfleet/shared');
 const connectDB = require('./config/db');
-const menuRoutes = require('./routes/menuRoutes');
+const app = require('./app');
 
 const logger = createLogger('menu-service');
-const app = createApp('menu-service');
-
-app.use('/api/menu', menuRoutes);
-
 const PORT = process.env.PORT || 3002;
 
 const start = async () => {

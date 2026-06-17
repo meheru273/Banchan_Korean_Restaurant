@@ -19,7 +19,11 @@
     "dev:admin": "npm run dev --workspace=admin",
     "dev:services": "concurrently \"npm:dev:gateway\" \"npm:dev:auth\" \"npm:dev:menu\" \"npm:dev:order\" \"npm:dev:delivery\" \"npm:dev:notification\"",
     "lint": "eslint . --ext .js,.jsx",
-    "test": "npm test --workspaces --if-present"
+    "test": "npm test --workspaces --if-present",
+    "test:auth": "npm test --workspace=services/auth-service",
+    "test:menu": "npm test --workspace=services/menu-service",
+    "test:order": "npm test --workspace=services/order-service",
+    "test:delivery": "npm test --workspace=services/delivery-service"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",

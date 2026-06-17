@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const { errorHandler } = require('../middleware/errorHandler');
 
 /**
  * Creates a pre-configured Express app with standard middleware.
@@ -22,8 +21,14 @@ const createApp = (serviceName) => {
     credentials: true,
   }));
 
-  // Body parsing with size limits
-  app.use(express.json({ limit: '10kb' }));
+  // Body parsing with size limits.
+  // Skip JSON parsing for webhook routes (e.g. Stripe) — those need the raw
+  // request body to verify signatures, and parse it themselves via express.raw().
+  const jsonParser = express.json({ limit: '10kb' });
+  app.use((req, res, next) => {
+    if (req.originalUrl.includes('/webhook')) return next();
+    return jsonParser(req, res, next);
+  });
   app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
   // Request logging
@@ -42,14 +47,12 @@ const createApp = (serviceName) => {
     });
   });
 
-  // Error handler must be registered AFTER all routes.
-  // We use a trick: defer it to a method the service calls after adding routes.
+  // The error handler must be registered AFTER all routes. Since routes are
+  // added by the caller, each service's app.js registers `errorHandler` itself
+  // as the last middleware (re-exported from this package). This works both
+  // when the server is started via app.listen() and under supertest (which
+  // never calls app.listen()), so route error responses behave the same in tests.
   app._serviceName = serviceName;
-  const originalListen = app.listen.bind(app);
-  app.listen = (...args) => {
-    app.use(errorHandler);
-    return originalListen(...args);
-  };
 
   return app;
 };

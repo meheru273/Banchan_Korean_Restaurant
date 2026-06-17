@@ -1,12 +1,16 @@
 const authService = require('../services/authService');
 const firebaseAuthService = require('../services/firebaseAuthService');
 
-// Helper to set refresh token as httpOnly cookie
+// Helper to set refresh token as httpOnly cookie.
+// In production the frontend (Vercel) and API (Render) are on different sites,
+// so the cookie must be SameSite=None + Secure to be sent cross-site. In dev
+// (same-site localhost) we use Lax.
+const isProd = process.env.NODE_ENV === 'production';
 const setRefreshCookie = (res, refreshToken) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: isProd,                       // required when sameSite is 'none'
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
@@ -84,7 +88,7 @@ exports.refresh = async (req, res, next) => {
 exports.logout = async (req, res, next) => {
   try {
     await authService.logout(req.user.userId);
-    res.clearCookie('refreshToken');
+    res.clearCookie('refreshToken', { httpOnly: true, secure: isProd, sameSite: isProd ? 'none' : 'lax' });
     res.json({ success: true, data: { message: 'Logged out successfully' } });
   } catch (err) {
     next(err);
