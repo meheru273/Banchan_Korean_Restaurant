@@ -137,8 +137,8 @@ services:
       - key: DELIVERY_SERVICE_URL
         value: https://banchan-delivery.onrender.com
 
-  # ── Notification worker (no HTTP; consumes BullMQ events) ──
-  - type: worker
+  # ── Notification service (runs as web on free plan; worker type requires paid plan) ──
+  - type: web
     name: banchan-notification
     runtime: node
     region: frankfurt
@@ -146,6 +146,7 @@ services:
     branch: main
     buildCommand: npm ci
     startCommand: node services/notification-service/src/index.js
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
