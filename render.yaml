@@ -1,4 +1,4 @@
-# FeastFleet — Render Blueprint (backend only; the frontend is deployed to Vercel)
+# Banchan Korean Restaurant — Render Blueprint (backend only; frontend is on Vercel)
 # Deploy with: Render Dashboard → New + → Blueprint → connect this repo.
 #
 # Secrets (MONGO_URI, STRIPE_*, SMTP_*) are marked `sync: false` — Render prompts
@@ -6,26 +6,25 @@
 # auto-generated; CORS_ORIGIN is shared and set once to your Vercel URL.
 #
 # NOTE: each service uses its OWN database name in MONGO_URI:
-#   auth → feastfleet_auth, menu → feastfleet_menu,
-#   order → feastfleet_orders, delivery → feastfleet_delivery
+#   auth → banchan_auth, menu → banchan_menu,
+#   order → banchan_orders, delivery → banchan_delivery
 
 envVarGroups:
-  - name: feastfleet-shared
+  - name: banchan-shared
     envVars:
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
-      # The public Vercel URL of the frontend, e.g. https://banchan.vercel.app
-      # (no trailing slash). Set on every service so CORS headers are consistent
-      # through the gateway proxy.
+      # The public Vercel URL of the frontend, e.g. https://banchan-korean.vercel.app
+      # (no trailing slash). Set on every service so CORS headers are consistent.
       - key: CORS_ORIGIN
         sync: false
 
 services:
   # ── Shared Redis (cache + BullMQ) ──
   - type: redis
-    name: feastfleet-redis
+    name: banchan-redis
     region: frankfurt
     plan: free
     ipAllowList: []                 # only reachable from Render services
@@ -33,7 +32,7 @@ services:
 
   # ── Auth service ──
   - type: web
-    name: feastfleet-auth
+    name: banchan-auth
     runtime: node
     region: frankfurt
     plan: free
@@ -44,15 +43,15 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - fromGroup: feastfleet-shared
+      - fromGroup: banchan-shared
       - key: MONGO_URI
         sync: false
       - key: REDIS_URL
-        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+        fromService: { type: redis, name: banchan-redis, property: connectionString }
 
   # ── Menu service ──
   - type: web
-    name: feastfleet-menu
+    name: banchan-menu
     runtime: node
     region: frankfurt
     plan: free
@@ -63,15 +62,15 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - fromGroup: feastfleet-shared
+      - fromGroup: banchan-shared
       - key: MONGO_URI
         sync: false
       - key: REDIS_URL
-        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+        fromService: { type: redis, name: banchan-redis, property: connectionString }
 
   # ── Order service (Stripe lives here) ──
   - type: web
-    name: feastfleet-order
+    name: banchan-order
     runtime: node
     region: frankfurt
     plan: free
@@ -82,23 +81,23 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - fromGroup: feastfleet-shared
+      - fromGroup: banchan-shared
       - key: MONGO_URI
         sync: false
       - key: REDIS_URL
-        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+        fromService: { type: redis, name: banchan-redis, property: connectionString }
       - key: MENU_SERVICE_URL
-        value: https://feastfleet-menu.onrender.com
+        value: https://banchan-menu.onrender.com
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
-        sync: false                 # set after creating the webhook in the Stripe Dashboard
+        sync: false                 # set after creating the webhook in Stripe Dashboard
       - key: STRIPE_CURRENCY
         value: gbp
 
   # ── Delivery service ──
   - type: web
-    name: feastfleet-delivery
+    name: banchan-delivery
     runtime: node
     region: frankfurt
     plan: free
@@ -109,15 +108,15 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - fromGroup: feastfleet-shared
+      - fromGroup: banchan-shared
       - key: MONGO_URI
         sync: false
       - key: REDIS_URL
-        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+        fromService: { type: redis, name: banchan-redis, property: connectionString }
 
-  # ── API Gateway (public entrypoint for /api/* — this is the URL the Vercel app calls) ──
+  # ── API Gateway (public entrypoint — this is the URL the Vercel app calls) ──
   - type: web
-    name: feastfleet-gateway
+    name: banchan-gateway
     runtime: node
     region: frankfurt
     plan: free
@@ -128,19 +127,19 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - fromGroup: feastfleet-shared
+      - fromGroup: banchan-shared
       - key: AUTH_SERVICE_URL
-        value: https://feastfleet-auth.onrender.com
+        value: https://banchan-auth.onrender.com
       - key: MENU_SERVICE_URL
-        value: https://feastfleet-menu.onrender.com
+        value: https://banchan-menu.onrender.com
       - key: ORDER_SERVICE_URL
-        value: https://feastfleet-order.onrender.com
+        value: https://banchan-order.onrender.com
       - key: DELIVERY_SERVICE_URL
-        value: https://feastfleet-delivery.onrender.com
+        value: https://banchan-delivery.onrender.com
 
   # ── Notification worker (no HTTP; consumes BullMQ events) ──
   - type: worker
-    name: feastfleet-notification
+    name: banchan-notification
     runtime: node
     region: frankfurt
     plan: free
@@ -151,7 +150,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: REDIS_URL
-        fromService: { type: redis, name: feastfleet-redis, property: connectionString }
+        fromService: { type: redis, name: banchan-redis, property: connectionString }
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -161,4 +160,4 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM
-        value: Banchan <noreply@banchan.com>
+        value: Banchan Korean <noreply@banchan.com>
