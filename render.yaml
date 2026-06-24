@@ -87,7 +87,7 @@ services:
       - key: REDIS_URL
         fromService: { type: redis, name: banchan-redis, property: connectionString }
       - key: MENU_SERVICE_URL
-        value: https://banchan-menu.onrender.com
+        value: https://banchan-menu-i2l9.onrender.com
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
@@ -129,13 +129,13 @@ services:
         value: production
       - fromGroup: banchan-shared
       - key: AUTH_SERVICE_URL
-        value: https://banchan-auth.onrender.com
+        value: https://banchan-auth-i2l9.onrender.com
       - key: MENU_SERVICE_URL
-        value: https://banchan-menu.onrender.com
+        value: https://banchan-menu-i2l9.onrender.com
       - key: ORDER_SERVICE_URL
-        value: https://banchan-order.onrender.com
+        value: https://banchan-order-i2l9.onrender.com
       - key: DELIVERY_SERVICE_URL
-        value: https://banchan-delivery.onrender.com
+        value: https://banchan-delivery-i2l9.onrender.com
 
   # ── Notification service (runs as web on free plan; worker type requires paid plan) ──
   - type: web
