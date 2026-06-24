@@ -16,8 +16,19 @@ const createApp = (serviceName) => {
 
   // Security
   app.use(helmet());
+  const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // Vite default
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, Postman, server-to-server)
+      if (!origin) return callback(null, true);
+      // Allow the exact configured origin
+      if (origin === allowedOrigin) return callback(null, true);
+      // Allow any Vercel preview URL for the same project
+      // e.g. banchan-korean-restaurant-client-abc123-meheru.vercel.app
+      const vercelPreview = /^https:\/\/banchan-korean-restaurant-client(-[a-z0-9]+-meheru)?\.vercel\.app$/;
+      if (vercelPreview.test(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
   }));
 
