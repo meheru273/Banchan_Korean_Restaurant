@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import GoogleButton from '../components/GoogleButton';
@@ -19,6 +19,8 @@ const firebaseError = (err) => {
 export default function Login() {
   const { login, resendVerification } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('return') || '/menu';
   const [form, setForm] = useState({ email: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
   const [needsVerify, setNeedsVerify] = useState(false);
@@ -30,7 +32,7 @@ export default function Login() {
     try {
       const user = await login(form.email, form.password);
       toast.success('Welcome back!');
-      navigate(user.role === 'admin' ? '/admin' : '/menu');
+      navigate(user.role === 'admin' ? '/admin' : returnTo);
     } catch (err) {
       if (err?.code === 'EMAIL_NOT_VERIFIED') setNeedsVerify(true);
       toast.error(firebaseError(err));
@@ -66,7 +68,7 @@ export default function Login() {
         <span className="text-xs text-gray-400">OR</span>
         <div className="h-px bg-gray-200 flex-1" />
       </div>
-      <GoogleButton onSuccess={(user) => { toast.success('Welcome!'); navigate(user.role === 'admin' ? '/admin' : '/menu'); }} />
+      <GoogleButton onSuccess={(user) => { toast.success('Welcome!'); navigate(user.role === 'admin' ? '/admin' : returnTo); }} />
 
       {needsVerify && (
         <div className="mt-3 text-sm bg-yellow-50 border border-yellow-200 rounded p-3">

@@ -62,7 +62,7 @@ function DishModal({ dish, onClose, onAdd }) {
 
         <div className="sticky bottom-0 px-[18px] pt-3 pb-5 bg-gradient-to-t from-[#FBF6EC] from-70% to-transparent">
           <button onClick={() => onAdd(dish, qty, notes)}
-            className="w-full bg-[#DC2113] text-[#FCEFD2] rounded-2xl py-4 font-archivo font-extrabold text-[16.5px] shadow-[0_14px_28px_-12px_rgba(220,33,19,0.6)]">
+            className="w-full bg-[#DC2113] text-[#FCEFD2] rounded-2xl py-4 font-archivo font-extrabold text-[16.5px] shadow-[0_14px_28px_-12px_rgba(220,33,19,0.6)] hover:bg-[#B5160E] active:scale-[0.98] transition-all duration-150">
             Add to basket · £{(dish.price * qty).toFixed(2)}
           </button>
         </div>
@@ -113,7 +113,6 @@ export default function Menu() {
   const selectCat = (id) => { setActiveCat(id); setParams({ cat: id }, { replace: true }); };
 
   const handleAdd = (dish, qty, notes) => {
-    if (!user) { toast.error('Please log in to order'); return navigate('/login'); }
     if (!restaurantId) return toast.error('No restaurant available');
     addItem({ menuItemId: dish._id, name: dish.name, price: dish.price, quantity: qty, specialInstructions: notes, restaurantId });
     setOpenDish(null);
@@ -158,7 +157,7 @@ export default function Menu() {
             const veg = vegTag(d.dietary);
             return (
               <button key={d._id} onClick={() => setOpenDish(d)}
-                className="flex gap-3.5 bg-white border border-[#F0E7D5] rounded-[18px] p-3 text-left shadow-[0_10px_24px_-22px_rgba(60,30,10,0.6)]">
+                className="flex gap-3.5 bg-white border border-[#F0E7D5] rounded-[18px] p-3 text-left shadow-[0_10px_24px_-22px_rgba(60,30,10,0.6)] hover:shadow-[0_12px_28px_-16px_rgba(220,33,19,0.18)] hover:-translate-y-0.5 hover:border-[#E0CDBA] transition-all duration-150">
                 <Thumb src={d.image} alt={d.name} className="w-[88px] h-[88px] rounded-[13px] shrink-0 object-cover" />
                 <div className="flex-1 min-w-0">
                   <div className="font-extrabold text-[16px] text-[#1C1613] leading-tight">{d.name}</div>
@@ -170,7 +169,7 @@ export default function Menu() {
                     {!d.isAvailable && <span className="bg-gray-200 text-gray-500 text-[10px] font-extrabold px-1.5 py-[3px] rounded-md">Sold out</span>}
                   </div>
                 </div>
-                <span className="self-end w-[34px] h-[34px] rounded-[11px] bg-[#DC2113] text-white flex items-center justify-center shrink-0"><Plus size={20} /></span>
+                <span className="self-end w-[34px] h-[34px] rounded-[11px] bg-[#DC2113] text-white flex items-center justify-center shrink-0 group-hover:bg-[#B5160E] transition-colors"><Plus size={20} /></span>
               </button>
             );
           })}

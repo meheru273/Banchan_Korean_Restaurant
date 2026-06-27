@@ -2,12 +2,19 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ChevronLeft, Minus, Plus } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Cart() {
   const { cart, refresh, setQuantity, removeItem } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  const handleCheckout = () => {
+    if (!user) { navigate('/login?return=/checkout'); return; }
+    navigate('/checkout');
+  };
 
   const total = (cart.subtotal + 2.99).toFixed(2);
 
@@ -72,9 +79,9 @@ export default function Cart() {
           </div>
 
           <div className="px-[18px] py-3.5 border-t border-[#EFE6D3] bg-[#FBF6EC] sticky bottom-0 md:static">
-            <button onClick={() => navigate('/checkout')}
-              className="w-full bg-[#DC2113] text-[#FCEFD2] rounded-2xl py-4 flex items-center justify-between px-5 shadow-[0_14px_28px_-12px_rgba(220,33,19,0.6)]">
-              <span className="font-archivo font-extrabold text-[16.5px]">Go to checkout</span>
+            <button onClick={handleCheckout}
+              className="w-full bg-[#DC2113] text-[#FCEFD2] rounded-2xl py-4 flex items-center justify-between px-5 shadow-[0_14px_28px_-12px_rgba(220,33,19,0.6)] hover:bg-[#B5160E] active:scale-[0.98] transition-all duration-150">
+              <span className="font-archivo font-extrabold text-[16.5px]">{user ? 'Go to checkout' : 'Log in to checkout'}</span>
               <span className="font-archivo font-black text-[17px]">£{total}</span>
             </button>
           </div>
