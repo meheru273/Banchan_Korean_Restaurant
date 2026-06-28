@@ -33,7 +33,7 @@ const placeOrderSchema = Joi.object({
     line1: Joi.string().required(),
     line2: Joi.string().allow(''),
     city: Joi.string().default('London'),
-    postcode: Joi.string().pattern(/^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i).required(),
+    postcode: Joi.string().min(3).max(10).required(),
   }).required(),
   restaurantId: Joi.string().required(),
   customerNotes: Joi.string().max(500).allow('').default(''),
