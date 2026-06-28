@@ -1,10 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Minus, Plus, X } from 'lucide-react';
+import { Minus, Plus, X, ChevronRight, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
-import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+
+const CACHE_KEY = 'banchan_menu_v1';
+const CACHE_TTL = 5 * 60 * 1000; // 5 min
+const PAGE_SIZE = 8;
+
+const loadCache = () => {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch { return null; }
+};
+const saveCache = (data) => {
+  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
+};
 
 const vegTag = (d = {}) => d.isVegan ? 'Vegan' : d.isVegetarian ? 'Veg' : null;
 
@@ -14,7 +30,6 @@ function Thumb({ src, alt, className }) {
     : <div className={`${className} bg-[repeating-linear-gradient(45deg,#F0E5D0,#F0E5D0_7px,#E9DDC6_7px,#E9DDC6_14px)]`} />;
 }
 
-/* ── Slide-up dish detail (matches the prototype's dish screen) ── */
 function DishModal({ dish, onClose, onAdd }) {
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState('');
@@ -73,7 +88,6 @@ function DishModal({ dish, onClose, onAdd }) {
 
 export default function Menu() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { addItem, cart } = useCart();
   const [params, setParams] = useSearchParams();
 
@@ -83,34 +97,86 @@ export default function Menu() {
   const [activeCat, setActiveCat] = useState(null);
   const [openDish, setOpenDish] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [searchInput, setSearchInput] = useState(params.get('search') || '');
 
-  useEffect(() => {
-    Promise.all([
-      api.get('/menu/items'),
-      api.get('/menu/categories'),
-      api.get('/menu/restaurants'),
-    ]).then(([i, c, r]) => {
+  const searchQuery = params.get('search') || '';
+
+  const fetchMenu = useCallback(async () => {
+    const cached = loadCache();
+    if (cached) {
+      setItems(cached.items);
+      setCategories(cached.categories);
+      setRestaurantId(cached.restaurantId);
+      const catParam = params.get('cat');
+      setActiveCat(catParam || cached.categories[0]?._id || null);
+      const itemParam = params.get('item');
+      if (itemParam) setOpenDish(cached.items.find((x) => x._id === itemParam) || null);
+      setLoading(false);
+      return;
+    }
+    try {
+      const [i, c, r] = await Promise.all([
+        api.get('/menu/items'),
+        api.get('/menu/categories'),
+        api.get('/menu/restaurants'),
+      ]);
       const its = i.data.data || [];
       const cats = c.data.data || [];
+      const rid = r.data.data?.[0]?._id || null;
       setItems(its);
       setCategories(cats);
-      setRestaurantId(r.data.data?.[0]?._id || null);
+      setRestaurantId(rid);
+      saveCache({ items: its, categories: cats, restaurantId: rid });
       const catParam = params.get('cat');
       setActiveCat(catParam || cats[0]?._id || null);
       const itemParam = params.get('item');
       if (itemParam) setOpenDish(its.find((x) => x._id === itemParam) || null);
-    }).catch(() => toast.error('Failed to load menu'))
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    } catch {
+      toast.error('Failed to load menu');
+    } finally {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeCategory = categories.find((c) => c._id === activeCat);
-  const dishes = useMemo(
-    () => items.filter((it) => (it.category?._id || it.category) === activeCat),
-    [items, activeCat]
-  );
+  useEffect(() => { fetchMenu(); }, [fetchMenu]);
 
-  const selectCat = (id) => { setActiveCat(id); setParams({ cat: id }, { replace: true }); };
+  // Reset page when category or search changes
+  useEffect(() => { setPageSize(PAGE_SIZE); }, [activeCat, searchQuery]);
+
+  const activeCategory = categories.find((c) => c._id === activeCat);
+
+  const dishes = useMemo(() => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return items.filter(
+        (it) => it.name.toLowerCase().includes(q) || it.description?.toLowerCase().includes(q)
+      );
+    }
+    return items.filter((it) => (it.category?._id || it.category) === activeCat);
+  }, [items, activeCat, searchQuery]);
+
+  const visibleDishes = dishes.slice(0, pageSize);
+  const hasMore = dishes.length > pageSize;
+
+  const selectCat = (id) => {
+    setActiveCat(id);
+    setSearchInput('');
+    setParams({ cat: id }, { replace: true });
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const q = searchInput.trim();
+    if (q) setParams({ search: q }, { replace: true });
+    else setParams({ cat: activeCat || '' }, { replace: true });
+  };
+
+  const clearSearch = () => {
+    setSearchInput('');
+    setParams({ cat: activeCat || '' }, { replace: true });
+  };
 
   const handleAdd = (dish, qty, notes) => {
     if (!restaurantId) return toast.error('No restaurant available');
@@ -124,6 +190,25 @@ export default function Menu() {
     <div className="max-w-5xl mx-auto pb-28 md:pb-12">
       {/* Sticky header */}
       <div className="sticky top-0 z-40 md:static bg-[#FBF6EC] border-b border-[#EFE6D3] px-5 pt-4 pb-3">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1.5 text-[12px] text-[#9C8E76] mb-2.5">
+          <button onClick={() => navigate('/')} className="hover:text-[#DC2113] transition-colors font-semibold">Home</button>
+          <ChevronRight size={11} strokeWidth={2.5} />
+          <button onClick={clearSearch} className="hover:text-[#DC2113] transition-colors font-semibold">Menu</button>
+          {searchQuery ? (
+            <>
+              <ChevronRight size={11} strokeWidth={2.5} />
+              <span className="text-[#1C1613] font-semibold">"{searchQuery}"</span>
+              <button onClick={clearSearch} className="ml-1 text-[#DC2113] hover:text-[#B0160A]"><X size={12} /></button>
+            </>
+          ) : activeCategory ? (
+            <>
+              <ChevronRight size={11} strokeWidth={2.5} />
+              <span className="text-[#1C1613] font-semibold">{activeCategory.name}</span>
+            </>
+          ) : null}
+        </div>
+
         <div className="flex items-start justify-between">
           <div>
             <div className="font-archivo font-black text-[26px] text-[#1C1613] tracking-tight">Menu</div>
@@ -136,24 +221,50 @@ export default function Menu() {
             )}
           </button>
         </div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 mt-3.5 pb-1">
-          {categories.map((c) => {
-            const a = c._id === activeCat;
-            return (
-              <button key={c._id} onClick={() => selectCat(c._id)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full text-[14px] font-extrabold border-2 transition-colors ${a ? 'bg-[#DC2113] border-[#DC2113] text-[#FCEFD2]' : 'bg-white border-[#ECE2D0] text-[#6B5F54]'}`}>
-                {c.name}
-              </button>
-            );
-          })}
-        </div>
+
+        {/* Inline search */}
+        <form onSubmit={handleSearch} className="flex items-center gap-2 mt-3 mb-1 bg-white border border-[#ECE2D0] rounded-[14px] px-3.5 py-2.5 focus-within:border-[#DC2113] transition-colors">
+          <Search size={15} className="text-[#B7A78A] shrink-0" />
+          <input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search dishes…"
+            className="flex-1 bg-transparent outline-none text-[14px] text-[#1C1613] placeholder:text-[#9C8E76] font-semibold"
+          />
+          {searchInput && (
+            <button type="button" onClick={clearSearch} className="text-[#9C8E76] hover:text-[#1C1613]"><X size={14} /></button>
+          )}
+          {searchInput && (
+            <button type="submit" className="text-[#DC2113] text-[13px] font-extrabold whitespace-nowrap">Go</button>
+          )}
+        </form>
+
+        {/* Category tabs — hidden when searching */}
+        {!searchQuery && (
+          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 mt-3 pb-1">
+            {categories.map((c) => {
+              const a = c._id === activeCat;
+              return (
+                <button key={c._id} onClick={() => selectCat(c._id)}
+                  className={`whitespace-nowrap px-4 py-2 rounded-full text-[14px] font-extrabold border-2 transition-colors ${a ? 'bg-[#DC2113] border-[#DC2113] text-[#FCEFD2]' : 'bg-white border-[#ECE2D0] text-[#6B5F54] hover:border-[#DC2113] hover:text-[#DC2113]'}`}>
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Dish list */}
       <div className="px-[18px] pt-4">
-        <div className="font-archivo font-extrabold text-[20px] text-[#1C1613] mb-3.5">{activeCategory?.name || 'Dishes'}</div>
-        <div className="grid md:grid-cols-2 gap-3.5">
-          {dishes.map((d) => {
+        <div className="font-archivo font-extrabold text-[20px] text-[#1C1613] mb-1">
+          {searchQuery ? `Results for "${searchQuery}"` : (activeCategory?.name || 'Dishes')}
+        </div>
+        {searchQuery && (
+          <div className="text-[13px] text-[#9C8E76] mb-3.5">{dishes.length} dish{dishes.length !== 1 ? 'es' : ''} found</div>
+        )}
+        <div className="grid md:grid-cols-2 gap-3.5 mt-3">
+          {visibleDishes.map((d) => {
             const veg = vegTag(d.dietary);
             return (
               <button key={d._id} onClick={() => setOpenDish(d)}
@@ -169,12 +280,25 @@ export default function Menu() {
                     {!d.isAvailable && <span className="bg-gray-200 text-gray-500 text-[10px] font-extrabold px-1.5 py-[3px] rounded-md">Sold out</span>}
                   </div>
                 </div>
-                <span className="self-end w-[34px] h-[34px] rounded-[11px] bg-[#DC2113] text-white flex items-center justify-center shrink-0 group-hover:bg-[#B5160E] transition-colors"><Plus size={20} /></span>
+                <span className="self-end w-[34px] h-[34px] rounded-[11px] bg-[#DC2113] text-white flex items-center justify-center shrink-0 hover:bg-[#B5160E] transition-colors"><Plus size={20} /></span>
               </button>
             );
           })}
-          {!dishes.length && <p className="text-[#9C8E76] text-sm">No dishes in this category yet.</p>}
+          {!dishes.length && (
+            <p className="text-[#9C8E76] text-sm col-span-2">
+              {searchQuery ? `No dishes match "${searchQuery}".` : 'No dishes in this category yet.'}
+            </p>
+          )}
         </div>
+
+        {/* Load more */}
+        {hasMore && (
+          <button
+            onClick={() => setPageSize((p) => p + PAGE_SIZE)}
+            className="mt-5 w-full py-3 rounded-2xl border-2 border-[#ECE2D0] text-[#6B5F54] font-extrabold text-[14.5px] hover:border-[#DC2113] hover:text-[#DC2113] transition-colors">
+            Show more ({dishes.length - pageSize} remaining)
+          </button>
+        )}
       </div>
 
       {openDish && <DishModal dish={openDish} onClose={() => setOpenDish(null)} onAdd={handleAdd} />}
