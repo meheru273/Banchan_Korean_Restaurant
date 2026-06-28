@@ -15,9 +15,9 @@ export default function Navbar() {
 
   return (
     <nav className="bg-[#1C1613] text-[#F8E7C7] px-4 py-3 hidden md:flex items-center justify-between sticky top-0 z-50">
-      <Link to="/" className="flex items-baseline gap-2">
-        <span className="text-xl font-extrabold tracking-tight text-[#F8E7C7]">BANCHAN</span>
-        <span className="text-lg text-[#DC2113] font-bold">반찬</span>
+      <Link to="/" className="flex items-baseline gap-2 group">
+        <span className="text-xl font-extrabold tracking-tight text-[#F8E7C7] group-hover:text-[#DC2113] transition-colors duration-200">BANCHAN</span>
+        <span className="text-lg text-[#DC2113] font-bold group-hover:text-[#F8E7C7] transition-colors duration-200">반찬</span>
       </Link>
 
       <div className="flex items-center gap-4">

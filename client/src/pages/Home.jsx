@@ -67,8 +67,7 @@ export default function Home() {
             </span>
             <span className="text-xs font-bold text-[#FCEFD2]/85 bg-black/15 px-2.5 py-1.5 rounded-full whitespace-nowrap">Open · 11–21</span>
           </div>
-          <h1
-            className="font-archivo text-[42px] md:text-[68px] leading-[0.95] font-black tracking-tight text-[#F8E7C7] cursor-default select-none transition-all duration-300 hover:text-white hover:drop-shadow-[0_0_32px_rgba(255,255,255,0.35)] hover:tracking-wide">
+          <h1 className="font-archivo text-[42px] md:text-[68px] leading-[0.95] font-black tracking-tight text-[#F8E7C7] cursor-default select-none">
             BANCHAN
           </h1>
           <p className="text-[15px] md:text-[19px] font-semibold text-[#FCEFD2]/85 mt-1.5 md:mt-3">Korean Grab n&apos; Go 🥢🥡 · authentic Korean recipes, freshly made</p>
