@@ -11,26 +11,36 @@ const morgan = require('morgan');
  *   app.use('/api/menu', menuRoutes);
  *   // errorHandler is already registered as the last middleware
  */
+/**
+ * Shared CORS origin check, used by every service AND by the gateway, so a
+ * single CORS_ORIGIN value behaves identically everywhere.
+ *
+ * CORS_ORIGIN accepts a comma-separated list, so the client and admin apps
+ * (and a local dev origin) can be allowed at the same time.
+ */
+const corsOrigin = (origin, callback) => {
+  const allowed = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))   // tolerate trailing slashes
+    .filter(Boolean);
+
+  // Any Vercel URL for this project: the bare domain, the production alias
+  // (…-client-meheru), and preview builds (…-client-<hash>-meheru).
+  const vercelUrl = /^https:\/\/banchan-korean-restaurant-client(-[a-z0-9-]+)?\.vercel\.app$/;
+
+  // Allow requests with no origin (curl, Postman, server-to-server)
+  if (!origin) return callback(null, true);
+  if (allowed.includes(origin)) return callback(null, true);
+  if (vercelUrl.test(origin)) return callback(null, true);
+  callback(new Error(`CORS: origin ${origin} not allowed`));
+};
+
 const createApp = (serviceName) => {
   const app = express();
 
   // Security
   app.use(helmet());
-  const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
-  app.use(cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (curl, Postman, server-to-server)
-      if (!origin) return callback(null, true);
-      // Allow the exact configured origin
-      if (origin === allowedOrigin) return callback(null, true);
-      // Allow any Vercel preview URL for the same project
-      // e.g. banchan-korean-restaurant-client-abc123-meheru.vercel.app
-      const vercelPreview = /^https:\/\/banchan-korean-restaurant-client(-[a-z0-9]+-meheru)?\.vercel\.app$/;
-      if (vercelPreview.test(origin)) return callback(null, true);
-      callback(new Error(`CORS: origin ${origin} not allowed`));
-    },
-    credentials: true,
-  }));
+  app.use(cors({ origin: corsOrigin, credentials: true }));
 
   // Body parsing with size limits.
   // Skip JSON parsing for webhook routes (e.g. Stripe) — those need the raw
@@ -68,4 +78,4 @@ const createApp = (serviceName) => {
   return app;
 };
 
-module.exports = { createApp };
+module.exports = { createApp, corsOrigin };

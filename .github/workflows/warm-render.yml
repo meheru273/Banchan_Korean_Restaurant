@@ -1,0 +1,48 @@
+name: Warm Render services
+
+# Render's free plan spins a web service down after ~15 min of inactivity, and
+# the next request pays a 30-60s cold start (which is what produced the 502s on
+# /api/menu/items). This workflow pings the stack to keep it hot.
+#
+# ── BUDGET: read before widening the schedule ──────────────────────────────
+# Free instance hours are capped at 750/month for the WHOLE ACCOUNT, and this
+# blueprint has 6 free web services. Keeping all 6 up 24/7 would burn
+# ~4,380 h/month — the quota is gone in ~5 days and Render suspends everything.
+#
+#   hours used ≈ services × warm-hours-per-day × 30
+#   6 services × 3 h/day × 30 = 540 h   ← the window below, ~210 h spare for
+#                                          real traffic outside it
+#
+# So this warms a 3-hour daily window only. Widening it past ~4 h/day
+# overruns the free quota. Outside the window the app still works — the
+# gateway's 90s proxy timeout and the client's /warm call absorb the cold
+# start instead of failing.
+#
+# Note: GitHub disables scheduled workflows after 60 days without repo
+# activity, and cron firing can drift 5-15 min under load — hence */5, not */15.
+
+on:
+  schedule:
+    # 17:00-19:55 UTC daily. Adjust the hour range to your demo/peak window.
+    - cron: '*/5 17-19 * * *'
+  # Manual kick: run this ~2 min before a demo or interview to boot the stack.
+  workflow_dispatch:
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warm gateway and all downstream services
+        # /warm makes the gateway ping auth, menu, order and delivery in
+        # parallel, so one request wakes the whole chain.
+        run: |
+          curl --silent --show-error --max-time 120 \
+            https://banchan-gateway-i2l9.onrender.com/warm | head -c 2000
+          echo
+
+      - name: Warm notification service
+        # Not proxied by the gateway, so it needs its own ping.
+        run: |
+          curl --silent --show-error --max-time 120 \
+            https://banchan-notification-i2l9.onrender.com/health | head -c 500
+          echo

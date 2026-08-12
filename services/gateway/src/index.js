@@ -7,11 +7,14 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { corsOrigin } = require('@feastfleet/shared');
 
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials: true }));
+// Same origin check the downstream services use, so one CORS_ORIGIN value
+// (comma-separated list allowed) governs the whole stack.
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(morgan('combined'));
 
 // Optional JWT — attach user to req.user if a valid token is present, otherwise just continue.
@@ -56,7 +59,7 @@ const makeLimiter = ({ windowMs, max, message }) => rateLimit({
   legacyHeaders: false,
   store: buildStore(),
   keyGenerator: (req) => (req.user?.userId ? `user:${req.user.userId}` : `ip:${req.ip}`),
-  skip: (req) => req.path === '/health',
+  skip: (req) => req.path === '/health' || req.path === '/warm',
   message: message || { success: false, error: 'Too many requests' },
 });
 
@@ -77,13 +80,63 @@ app.get('/health', (_req, res) =>
   res.json({ success: true, data: { status: 'ok', service: 'gateway', uptime: process.uptime() } })
 );
 
+// ── Cold-start warming ─────────────────────────────────────────
+// Render's free plan spins a service down after ~15 min idle; the next request
+// pays a 30-60s boot. /warm pings every downstream /health in parallel so they
+// boot concurrently instead of one-at-a-time as the user navigates. Call it
+// fire-and-forget from the client on app load.
+const DOWNSTREAM = {
+  auth: process.env.AUTH_SERVICE_URL,
+  menu: process.env.MENU_SERVICE_URL,
+  order: process.env.ORDER_SERVICE_URL,
+  delivery: process.env.DELIVERY_SERVICE_URL,
+};
+
+const ping = async (url, timeoutMs) => {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
+  const started = Date.now();
+  try {
+    const res = await fetch(`${url}/health`, { signal: ac.signal });
+    return { ok: res.ok, status: res.status, ms: Date.now() - started };
+  } catch (err) {
+    // A timeout here is expected on a cold service — the request still
+    // triggered Render's spin-up, which is the whole point.
+    return { ok: false, error: err.name === 'AbortError' ? 'timeout' : err.message, ms: Date.now() - started };
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+app.get('/warm', async (_req, res) => {
+  const entries = Object.entries(DOWNSTREAM).filter(([, url]) => url);
+  const results = await Promise.all(entries.map(async ([name, url]) => [name, await ping(url, 75000)]));
+  res.json({ success: true, data: Object.fromEntries(results) });
+});
+
+// Warm downstream services when the gateway itself boots. If the gateway just
+// woke up, the others are almost certainly asleep too — start them now rather
+// than making the first real request wait.
+const warmOnBoot = () => {
+  for (const [name, url] of Object.entries(DOWNSTREAM)) {
+    if (!url) continue;
+    ping(url, 75000).then((r) =>
+      console.log(`[Gateway] warm ${name}: ${r.ok ? `ok in ${r.ms}ms` : r.error || r.status}`)
+    );
+  }
+};
+
 // Build a proxy that forwards x-user-* headers when authenticated
 const proxy = (target) => createProxyMiddleware({
   target,
   changeOrigin: true,
-  timeout: 30000,
+  // Must exceed a Render cold start (~30-60s), otherwise the very first
+  // request to a sleeping service 502s instead of just being slow.
+  timeout: 90000,
+  proxyTimeout: 90000,
   onError: (err, _req, res) => {
     console.error(`[Gateway] proxy error → ${target}:`, err.message);
+    if (res.headersSent) return;
     res.status(502).json({ success: false, error: 'Service temporarily unavailable' });
   },
   onProxyReq: (proxyReq, req) => {
@@ -109,4 +162,5 @@ app.listen(PORT, () => {
   console.log(`  /api/menu       → ${process.env.MENU_SERVICE_URL}`);
   console.log(`  /api/orders     → ${process.env.ORDER_SERVICE_URL}`);
   console.log(`  /api/deliveries → ${process.env.DELIVERY_SERVICE_URL}`);
+  if (process.env.NODE_ENV === 'production') warmOnBoot();
 });

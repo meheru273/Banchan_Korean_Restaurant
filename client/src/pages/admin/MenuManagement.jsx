@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import AdminBreadcrumb from '../../components/AdminBreadcrumb';
 
 const emptyForm = {
   name: '',
@@ -96,6 +97,7 @@ export default function MenuManagement() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      <AdminBreadcrumb page="Menu management" />
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-[#1C1613]">Menu management</h1>
         <button onClick={showForm ? () => setShowForm(false) : openCreate}

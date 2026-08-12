@@ -2,7 +2,7 @@
  * Creates or promotes an admin account for Firebase-based auth.
  *
  * Usage:
- *   node services/auth-service/src/createAdmin.js
+ *   node services/auth-service/src/createAdmin.js <email> <password>
  *
  * Requires MONGO_URI and FIREBASE_SERVICE_ACCOUNT (or local firebase-service-account.json)
  * in services/auth-service/.env
@@ -12,9 +12,14 @@ const mongoose = require('mongoose');
 const admin = require('firebase-admin');
 const path = require('path');
 
-const ADMIN_EMAIL = 'meherujannat@gmail.com';
-const ADMIN_PASSWORD = 'admin@123';
+const ADMIN_EMAIL = process.argv[2];
+const ADMIN_PASSWORD = process.argv[3];
 const ADMIN_NAME = 'Banchan Admin';
+
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  console.error('Usage: node createAdmin.js <email> <password>');
+  process.exit(1);
+}
 
 // Init Firebase Admin
 const initFirebase = () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import AdminBreadcrumb from '../../components/AdminBreadcrumb';
 
 export default function DeliveryManagement() {
   const [deliveries, setDeliveries] = useState([]);
@@ -33,6 +34,7 @@ export default function DeliveryManagement() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      <AdminBreadcrumb page="Delivery management" />
       <h1 className="text-2xl font-bold text-[#1C1613] mb-4">Pending deliveries</h1>
 
       {!deliveries.length && <p className="text-gray-500">No pending deliveries.</p>}

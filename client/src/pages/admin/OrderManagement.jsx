@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import AdminBreadcrumb from '../../components/AdminBreadcrumb';
 
 const STATUSES = [
   'pending', 'confirmed', 'preparing', 'ready_for_pickup',
@@ -33,6 +34,7 @@ export default function OrderManagement() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      <AdminBreadcrumb page="Order management" />
       <h1 className="text-2xl font-bold text-[#1C1613] mb-4">Order management</h1>
       <div className="bg-white rounded-lg shadow-sm divide-y">
         {orders.map((o) => (

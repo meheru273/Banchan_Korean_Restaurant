@@ -11,6 +11,15 @@ const api = axios.create({
   withCredentials: true,                           // for the refresh-token cookie
 });
 
+// Render's free plan sleeps a service after ~15 min idle. Hitting the gateway's
+// /warm makes it boot every downstream service in parallel, so the auth/order
+// calls that come later in the session don't each pay their own cold start.
+// Fire-and-forget: it resolves in ~1min on a cold stack and nothing awaits it.
+export const warmBackend = () => {
+  const base = API_BASE.replace(/\/api\/?$/, '');
+  return axios.get(`${base}/warm`, { timeout: 90000 }).catch(() => {});
+};
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) config.headers.Authorization = `Bearer ${token}`;
